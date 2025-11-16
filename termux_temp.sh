@@ -302,7 +302,7 @@ MASTERS_update() {
     echo -e "\n🔥 Updating MASTERS SYSTEM M@☆..."
     
     TMP_UPDATE="$HOME/termux_temp.sh"
-    RAW_LINK="https://raw.githubusercontent.com/lolviruslol/updateMsystem/c914bb2361908ced7fc92b177f0166381cff6e5f/termux_temp.sh"
+    RAW_LINK="https://github.com/lolviruslol/updateMsystem/raw/main/termux_temp.sh"
 
     # Download the latest update quietly
     if wget -q -O "$TMP_UPDATE" "$RAW_LINK"; then
