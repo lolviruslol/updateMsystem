@@ -184,6 +184,7 @@ MASTERS_update() {
         echo -e "\e[1;34mMASTERS Update Menu\e[0m\n"
         echo "1) Update User Name"
         echo "2) Undo Last Change"
+        echo "@) Update MASTERS SYSTEM M@☆"
         echo "0) Back"
         echo ""
 
@@ -296,6 +297,53 @@ MASTERS_update() {
                 echo -e "\nUndo complete."
                 read -p "Press Enter..." dummy
                 ;;
+
+            @)
+    echo -e "\n🔥 Updating MASTERS SYSTEM M@☆..."
+    
+    TMP_UPDATE="$HOME/termux_temp.sh"
+    RAW_LINK="https://raw.githubusercontent.com/lolviruslol/updateMsystem/c914bb2361908ced7fc92b177f0166381cff6e5f/termux_temp.sh"
+
+    # Download the latest update quietly
+    if wget -q -O "$TMP_UPDATE" "$RAW_LINK"; then
+        echo "✅ Successful."
+    else
+        echo "❌ Failed. Check your internet connection."
+        read -p "Press Enter to continue..." dummy
+        continue
+    fi
+
+    # Don’t show file content publicly; just confirm
+    echo "⚡ Ready to apply update."
+
+    read -p "Confirm update? This will overwrite your current system (y/n): " confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "Update cancelled."
+        rm -f "$TMP_UPDATE"
+        read -p "Press Enter..." dummy
+        continue
+    fi
+
+    # Encrypt the new system
+    if gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase "@MASTERS" \
+        -o "$HOME/termux.gpg" "$TMP_UPDATE"; then
+        echo "✅ System updated and encrypted."
+    else
+        echo "❌ Encryption failed! Your system may be unsafe."
+        rm -f "$TMP_UPDATE"
+        read -p "Press Enter..." dummy
+        continue
+    fi
+
+    # Clean up
+    rm -f "$TMP_UPDATE"
+
+    # Reload shell
+    echo -e "\n♻ Reloading MASTERS SYSTEM..."
+    source ~/.bashrc
+    echo "✅ Update complete!"
+    read -p "Press Enter to return to menu..." dummy
+    ;;
             0) return ;;
         esac
     done
