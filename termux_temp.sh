@@ -1,0 +1,433 @@
+###############################
+#  MASTERS SYSTEM M@☆
+###############################
+#!/data/data/com.termux/files/usr/bin/bash
+
+shopt -s expand_aliases
+
+############################################
+# AUTO INSTALL DEPENDENCIES
+############################################
+
+required_pkgs=(ruby figlet cmatrix chafa python termux-api)
+
+for pkg in "${required_pkgs[@]}"; do
+    if ! command -v $pkg &>/dev/null; then
+        echo "Installing missing package: $pkg..."
+        pkg install -y $pkg
+    fi
+done
+
+if ! command -v lolcat &>/dev/null; then
+    echo "Installing lolcat gem..."
+    gem install lolcat
+fi
+
+# Add gem binaries to PATH
+for gem_path in "$HOME/.gem/ruby/"*/bin "$HOME/.local/share/gem/ruby/"*/bin; do
+    [ -d "$gem_path" ] && PATH="$gem_path:$PATH"
+done
+export PATH
+
+############################################
+# MATRIX INTRO
+############################################
+
+MATRIX_SCRIPT="$HOME/matrix_tk.sh"
+[ -f "$MATRIX_SCRIPT" ] && bash "$MATRIX_SCRIPT"
+
+############################################
+# CINEMATIC BANNER — DYNAMIC
+############################################
+
+clear
+
+# --- Display MASTERS SYSTEM text with random blue gradient ---
+text="MASTERS SYSTEM M@☆┉┉⸙"
+colors=(34 36 94 96 39)
+
+for (( i=0; i<${#text}; i++ )); do
+    color=${colors[$RANDOM % ${#colors[@]}]}
+    printf "\e[${color}m${text:$i:1}\e[0m"
+done
+echo
+
+# --- FIGLET Banner ---
+cols=$(tput cols)
+figlet -w "$cols" "MASTERS....." | lolcat
+
+# --- Load current banner from encrypted config ---
+TMP_FILE=$(mktemp)
+if gpg --quiet --batch --yes --passphrase "@MASTERS" --decrypt ~/termux.gpg > "$TMP_FILE" 2>/dev/null; then
+    BANNER_LINE=$(grep '^echo "' "$TMP_FILE" | head -n 1 | sed 's/^echo "//; s/"$//')
+else
+    BANNER_LINE=""
+fi
+rm -f "$TMP_FILE"
+
+# Fallback default banner if empty
+[ -z "$BANNER_LINE" ] && BANNER_LINE="ᴛᵏ ᴍᵃˢᵗᵉʳ @M🇦 🇸 🇹 🇪 🇷 🇸 🇹 🇪 🇨 🇭 🇸 🇴 🇱 🇺 🇹 🇮 🇴 🇳 🇸...——"
+
+# --- Left-aligned cinematic lines ---
+echo -e "\e[1;32mM@☆......."
+echo "....................................................💙"
+echo ".........."
+echo "$BANNER_LINE"
+echo -e "\e[0m"
+
+############################################
+# WORK DIR
+############################################
+
+WORK_DIR="/storage/emulated/0/MASTERS"
+[ ! -d "$WORK_DIR" ] && mkdir -p "$WORK_DIR"
+cd "$WORK_DIR"
+
+############################################
+# ALIAS STORAGE
+############################################
+
+ALIAS_FILE="$HOME/.masters_aliases"
+touch "$ALIAS_FILE"
+
+if [ -f "$ALIAS_FILE" ]; then
+    source "$ALIAS_FILE"
+fi
+
+############################################
+# CUSTOM PROMPT
+############################################
+
+export PS1="\[\e[0;32m\]—\[\e[0;37m\]M\[\e[1;36m\]@\[\e[1;31m\]☆ \[\e[0;32m\]\$ \[\e[0m\]"
+
+############################################
+# FILE FUNCTION MAP (RUNMAP)
+############################################
+
+RUNMAP_FILE="$WORK_DIR/.runmap.txt"
+declare -A FILE_FUNCTIONS
+
+# Load previous mappings
+if [ -f "$RUNMAP_FILE" ]; then
+    while IFS='=' read -r key val; do
+        FILE_FUNCTIONS["$key"]="$val"
+    done < "$RUNMAP_FILE"
+fi
+
+# Defaults (only if missing)
+[[ -z "${FILE_FUNCTIONS["WTk/wtk_sniper_system_v2.py"]}" ]] && FILE_FUNCTIONS["WTk/wtk_sniper_system_v2.py"]="WTkMasterFx"
+[[ -z "${FILE_FUNCTIONS["WTk/wtk_masterfx.py"]}" ]] && FILE_FUNCTIONS["WTk/wtk_masterfx.py"]="WTkMasterFx01"
+[[ -z "${FILE_FUNCTIONS["WTk/NumPy.py"]}" ]] && FILE_FUNCTIONS["WTk/NumPy.py"]="NeedNumPy"
+[[ -z "${FILE_FUNCTIONS["lets_vpn_go.png"]}" ]] && FILE_FUNCTIONS["lets_vpn_go.png"]="LetsUpdate_letsVPNgo"
+[[ -z "${FILE_FUNCTIONS["masters1.png"]}" ]] && FILE_FUNCTIONS["masters1.png"]="runmasters1"
+
+############################################
+# ALIAS ENGINE — CLEAN, SORT & RELOAD
+############################################
+
+SAVE_RUNMAP() {
+    > "$RUNMAP_FILE"
+    for key in "${!FILE_FUNCTIONS[@]}"; do
+        echo "$key=${FILE_FUNCTIONS[$key]}" >> "$RUNMAP_FILE"
+    done
+
+    > "$ALIAS_FILE"
+    for key in "${!FILE_FUNCTIONS[@]}"; do
+        runname="${FILE_FUNCTIONS[$key]}"
+        filepath="$WORK_DIR/$key"
+        # Only add alias if it exists
+        [ "$runname" != "(no function)" ] && echo "alias $runname='python \"$filepath\"'" >> "$ALIAS_FILE"
+    done
+
+    sort -o "$ALIAS_FILE" "$ALIAS_FILE"
+    source "$ALIAS_FILE"
+}
+
+############################################
+# MAIN MENU
+############################################
+
+MASTERS_menu() {
+    shopt -s expand_aliases
+    clear
+    cols=$(tput cols)
+    figlet -w "$cols" MASTERS..... | lolcat
+    echo -e "\e[1;34mMASTERS menu\e[0m\n"
+    echo "1) M@☆"
+    echo "2) MASTERS Tech"
+    echo "3) WTk"
+    echo "0) Back"
+    echo ""
+    read -p "Enter choice: " choice
+
+    case $choice in
+        1) SECTION_DIR="$WORK_DIR/M-AT-STAR" ;;
+        2) SECTION_DIR="$WORK_DIR/MASTERS_Tech" ;;
+        3) SECTION_DIR="$WORK_DIR/WTk" ;;
+        0) return ;;
+        *) MASTERS_menu ;;
+    esac
+
+    mkdir -p "$SECTION_DIR"
+    SECTION_menu
+}
+
+############################################
+# MASTERS UPDATE MENU
+############################################
+
+MASTERS_update() {
+    while true; do
+        clear
+        cols=$(tput cols)
+        figlet -w "$cols" "MASTERS Update" | lolcat
+        echo -e "\e[1;34mMASTERS Update Menu\e[0m\n"
+        echo "1) Update User Name"
+        echo "2) Undo Last Change"
+        echo "0) Back"
+        echo ""
+
+        read -p "Enter choice: " choice
+
+        case $choice in
+            1)
+                DEFAULT_BANNER="ᴛᵏ ᴍᵃˢᵗᵉʳ @M🇦 🇸 🇹 🇪 🇷 🇸 🇹 🇪 🇨 🇭 🇸 🇴 🇱 🇺 🇹 🇮 🇴 🇳 🇸...——"
+                MAX_LEN=55
+
+                TMP_FILE=$(mktemp)
+                gpg --quiet --batch --yes --passphrase "@MASTERS" --decrypt ~/termux.gpg > "$TMP_FILE"
+
+                # Extract current banner safely using marker
+                CURRENT_BANNER=$(grep -A1 '^# BANNER_LINE' "$TMP_FILE" | tail -n1 | sed 's/^echo "//; s/"$//')
+                [ -z "$CURRENT_BANNER" ] && CURRENT_BANNER="$DEFAULT_BANNER"
+
+                echo -e "\nCurrent Banner:"
+                echo "$CURRENT_BANNER"
+
+                echo -e "\nEnter new banner (max $MAX_LEN chars)"
+                echo "(Press ENTER to restore default)"
+                read -r NEW_BANNER
+
+                if [ -z "$NEW_BANNER" ]; then
+                    NEW_BANNER="$DEFAULT_BANNER"
+                    echo -e "\nRestoring default banner..."
+                fi
+
+                if [ ${#NEW_BANNER} -gt $MAX_LEN ]; then
+                    NEW_BANNER="${NEW_BANNER:0:$MAX_LEN}"
+                    echo -e "\nInput truncated to $MAX_LEN characters."
+                fi
+
+                echo -e "\n====== PREVIEW ======"
+                echo -e "Current: $CURRENT_BANNER"
+                echo -e "New:     $NEW_BANNER"
+                echo "======================"
+                read -p "Save this change? (y/n): " confirm
+                if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                    echo -e "\nCancelled. No changes saved."
+                    read -p "Press Enter..." dummy
+                    rm -f "$TMP_FILE"
+                    continue
+                fi
+
+                # Store undo
+                sed -i "s/^PREVIOUS_BANNER=.*/PREVIOUS_BANNER=\"$CURRENT_BANNER\"/" "$TMP_FILE" 2>/dev/null \
+                    || echo "PREVIOUS_BANNER=\"$CURRENT_BANNER\"" >> "$TMP_FILE"
+
+                # Remove old banner line after marker if exists
+                sed -i '/^# BANNER_LINE$/,+1d' "$TMP_FILE" 2>/dev/null
+
+                # Add updated banner with marker at the top
+                {
+                    echo "# BANNER_LINE"
+                    echo "echo \"$NEW_BANNER\""
+                    cat "$TMP_FILE"
+                } > "${TMP_FILE}.tmp"
+                mv "${TMP_FILE}.tmp" "$TMP_FILE"
+
+                # Re-encrypt
+                gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase "@MASTERS" \
+                    -o ~/termux.gpg "$TMP_FILE"
+
+                rm -f "$TMP_FILE"
+
+                echo -e "\nBanner updated!"
+                read -p "Press Enter..." dummy
+                ;;
+
+            2)
+                TMP_FILE=$(mktemp)
+                gpg --quiet --batch --yes --passphrase "@MASTERS" --decrypt ~/termux.gpg > "$TMP_FILE"
+
+                PREV=$(grep "^PREVIOUS_BANNER=" "$TMP_FILE" | cut -d'"' -f2)
+                if [ -z "$PREV" ]; then
+                    echo -e "\nNo previous banner stored."
+                    read -p "Press Enter..." dummy
+                    rm -f "$TMP_FILE"
+                    continue
+                fi
+
+                echo -e "\nRestoring previous banner:"
+                echo "$PREV"
+                read -p "Confirm restore? (y/n): " confirm
+                if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+                    echo -e "\nUndo cancelled."
+                    read -p "Press Enter..." dummy
+                    rm -f "$TMP_FILE"
+                    continue
+                fi
+
+                # Remove old banner line
+                sed -i '/^# BANNER_LINE$/,+1d' "$TMP_FILE" 2>/dev/null
+
+                # Add previous banner with marker
+                {
+                    echo "# BANNER_LINE"
+                    echo "echo \"$PREV\""
+                    cat "$TMP_FILE"
+                } > "${TMP_FILE}.tmp"
+                mv "${TMP_FILE}.tmp" "$TMP_FILE"
+
+                # Re-encrypt
+                gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase "@MASTERS" \
+                    -o ~/termux.gpg "$TMP_FILE"
+
+                rm -f "$TMP_FILE"
+                echo -e "\nUndo complete."
+                read -p "Press Enter..." dummy
+                ;;
+            0) return ;;
+        esac
+    done
+}
+
+# Alias for convenience
+alias MASTERS-update='MASTERS_update'
+
+############################################
+# SECTION MENU — DYNAMIC SCALE
+############################################
+
+SECTION_menu() {
+    while true; do
+        clear
+        cols=$(tput cols)
+        echo -e "\e[1;32mDirectory: $(basename "$SECTION_DIR")\e[0m"
+        echo "─"$(printf '─%.0s' $(seq 1 $((cols-1))))"─"
+
+        i=1
+        declare -A INDEX_TO_FILE
+
+# LIST FILES SORTED BY DATE (NEWEST FIRST) WITH ICONS
+while IFS= read -r file_name; do
+    key="$(basename "$SECTION_DIR")/$file_name"
+    func="${FILE_FUNCTIONS[$key]:-(no function)}"
+
+    # Detect file extension
+    ext="${file_name##*.}"
+    icon="📦"  # default
+
+    case "$ext" in
+        py)   icon="🐍" ;;
+        txt)  icon="📄" ;;
+        pdf)  icon="📜" ;;
+        png|jpg|jpeg|gif|webp) icon="🖼️" ;;
+        sh)   icon="🔧" ;;
+        json|yaml|yml) icon="💾" ;;
+        zip|rar|7z|tar|gz) icon="📦" ;;
+        *)
+            if [ -d "$SECTION_DIR/$file_name" ]; then
+                icon="📁"
+            else
+                icon="⚙️"
+            fi
+        ;;
+    esac
+
+    # Display nicely with two lines (name + run)
+    echo -e "\e[33m$((i))). $icon  $file_name\e[0m"
+    echo -e "      \e[90mrun: $func\e[0m"
+    echo
+    INDEX_TO_FILE[$i]="$file_name"
+    ((i++))
+done < <(ls -1t "$SECTION_DIR")
+
+        echo "─"$(printf '─%.0s' $(seq 1 $((cols-1))))"─"
+        echo "0) Go Back | 00) Add New File"
+        echo "─"$(printf '─%.0s' $(seq 1 $((cols-1))))"─"
+        read -p "Enter choice: " pick
+
+        if [[ "$pick" == "0" ]]; then
+            MASTERS_menu
+            return
+        fi
+
+        if [[ "$pick" == "00" ]]; then
+            read -p "Enter new file name: " new_file
+            touch "$SECTION_DIR/$new_file"
+            read -p "Press Enter..." dummy
+            continue
+        fi
+
+        selected="${INDEX_TO_FILE[$pick]}"
+        [[ -n "$selected" ]] && FILE_ACTION_MENU "$selected"
+    done
+}
+
+############################################
+# FILE ACTION MENU — DYNAMIC
+############################################
+
+FILE_ACTION_MENU() {
+    local file="$1"
+    key="$(basename "$SECTION_DIR")/$file"
+    func="${FILE_FUNCTIONS[$key]:-(no function)}"
+
+    while true; do
+        clear
+        cols=$(tput cols)
+        echo "Selected File: $file"
+        echo "─"$(printf '─%.0s' $(seq 1 $((cols-1))))"─"
+        echo "1) Run: $func"
+        echo "2) Edit run name (shortcut)"
+        echo "3) Edit file (nano)"
+        echo "4) Delete run name"
+        echo "0) Go Back"
+        echo "─"$(printf '─%.0s' $(seq 1 $((cols-1))))"─"
+
+        read -p "Enter action: " action
+
+        case $action in
+            1)
+                echo "Executing $file..."
+                python "$SECTION_DIR/$file"
+                read -p "Press Enter..." dummy
+                ;;
+            2)
+                echo "Current shortcut: $func"
+                read -p "Enter new shortcut: " new_func
+                FILE_FUNCTIONS[$key]="$new_func"
+                SAVE_RUNMAP
+                read -p "Updated. Press Enter..." dummy
+                ;;
+            3)
+                nano "$SECTION_DIR/$file"
+                ;;
+            4)
+                echo "Deleting shortcut: $func"
+                unset FILE_FUNCTIONS[$key]
+                SAVE_RUNMAP
+                read -p "Removed. Press Enter..." dummy
+                ;;
+            0)
+                return
+                ;;
+        esac
+    done
+}
+
+############################################
+# START
+############################################
+
+echo -e "\e[90m—M@☆ \$ MASTERS_menu | MASTERS_update\e[0m"
