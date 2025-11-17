@@ -630,14 +630,15 @@ FILE_ACTION_MENU() {
                 ;;
 
             3)
-                if is_mspy "$file"; then
-                    echo "Protected file. Use secure edit workflow."
-                    decrypt_edit_reencrypt "$file"
-                    read -p "Press Enter..." dummy
-                else
-                    nano "$SECTION_DIR/$file"
-                fi
-                ;;
+    if is_mspy "$file"; then
+        echo "This file is protected and cannot be viewed or edited."
+        read -p "Press Enter..."
+        return
+    fi
+
+    nano "$SECTION_DIR/$file"
+    return
+    ;;
 
             4)
                 echo "Deleting shortcut: $func"
