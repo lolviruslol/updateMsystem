@@ -352,7 +352,41 @@ MASTERS_update() {
 # Alias for convenience
 alias MASTERS-update='MASTERS_update'
 
+
 ############################################
+# M@☆ UPDATE — FETCH 3 FILES
+############################################
+
+M@_update() {
+    WORK_DIR="/storage/emulated/0/MASTERS/M-AT-STAR"
+    mkdir -p "$WORK_DIR"
+
+    echo -e "\n🔥 Fetching latest M@☆ files..."
+
+    # File URLs
+    declare -A FILES
+    FILES["hosts.txt"]="https://raw.githubusercontent.com/M-AT-STAR/SAVE/main/hosts.txt"
+    FILES["hosts100.txt"]="https://raw.githubusercontent.com/M-AT-STAR/SAVE/main/hosts100.txt"
+    FILES["M@_zero_rated_scan.mspy"]="https://raw.githubusercontent.com/M-AT-STAR/SAVE/main/M%40_zero_rated_scan.mspy"
+
+    for file in "${!FILES[@]}"; do
+        url="${FILES[$file]}"
+        echo "Downloading $file..."
+        curl -L "$url" -o "$WORK_DIR/$file"
+        if [ $? -eq 0 ]; then
+            echo "✅ $file saved to $WORK_DIR"
+        else
+            echo "❌ Failed to download $file"
+        fi
+    done
+
+    echo -e "\n♻ Reloading MASTERS SYSTEM aliases..."
+    source ~/.bashrc
+    echo "✅ Update complete!"
+    read -p "Press Enter to continue..." dummy
+}
+
+############################################################################
 # SECTION MENU — DYNAMIC SCALE
 ############################################
 
@@ -366,59 +400,61 @@ SECTION_menu() {
         i=1
         declare -A INDEX_TO_FILE
 
-# LIST FILES SORTED BY DATE (NEWEST FIRST) WITH ICONS
-while IFS= read -r file_name; do
-    key="$(basename "$SECTION_DIR")/$file_name"
-    func="${FILE_FUNCTIONS[$key]:-(no function)}"
+        # LIST FILES SORTED BY DATE (NEWEST FIRST) WITH ICONS
+        while IFS= read -r file_name; do
+            key="$(basename "$SECTION_DIR")/$file_name"
+            func="${FILE_FUNCTIONS[$key]:-(no function)}"
 
-    # Detect file extension
-    ext="${file_name##*.}"
-    icon="📦"  # default
+            # Detect file extension
+            ext="${file_name##*.}"
+            icon="📦"  # default
 
-    case "$ext" in
-        py)   icon="🐍" ;;
-        txt)  icon="📄" ;;
-        pdf)  icon="📜" ;;
-        png|jpg|jpeg|gif|webp) icon="🖼️" ;;
-        sh)   icon="🔧" ;;
-        json|yaml|yml) icon="💾" ;;
-        zip|rar|7z|tar|gz) icon="📦" ;;
-        *)
-            if [ -d "$SECTION_DIR/$file_name" ]; then
-                icon="📁"
-            else
-                icon="⚙️"
-            fi
-        ;;
-    esac
+            case "$ext" in
+                py)   icon="🐍" ;;
+                txt)  icon="📄" ;;
+                pdf)  icon="📜" ;;
+                png|jpg|jpeg|gif|webp) icon="🖼️" ;;
+                sh)   icon="🔧" ;;
+                json|yaml|yml) icon="💾" ;;
+                zip|rar|7z|tar|gz) icon="📦" ;;
+                *)
+                    if [ -d "$SECTION_DIR/$file_name" ]; then
+                        icon="📁"
+                    else
+                        icon="⚙️"
+                    fi
+                ;;
+            esac
 
-    # Display nicely with two lines (name + run)
-    echo -e "\e[33m$((i))). $icon  $file_name\e[0m"
-    echo -e "      \e[90mrun: $func\e[0m"
-    echo
-    INDEX_TO_FILE[$i]="$file_name"
-    ((i++))
-done < <(ls -1t "$SECTION_DIR")
+            echo -e "\e[33m$((i))). $icon  $file_name\e[0m"
+            echo -e "      \e[90mrun: $func\e[0m"
+            echo
+            INDEX_TO_FILE[$i]="$file_name"
+            ((i++))
+        done < <(ls -1t "$SECTION_DIR")
 
         echo "─"$(printf '─%.0s' $(seq 1 $((cols-1))))"─"
-        echo "0) Go Back | 00) Add New File"
+        echo "0) Go Back | 00) Add New File | @) M@☆update"
         echo "─"$(printf '─%.0s' $(seq 1 $((cols-1))))"─"
         read -p "Enter choice: " pick
 
-        if [[ "$pick" == "0" ]]; then
-            MASTERS_menu
-            return
-        fi
-
-        if [[ "$pick" == "00" ]]; then
-            read -p "Enter new file name: " new_file
-            touch "$SECTION_DIR/$new_file"
-            read -p "Press Enter..." dummy
-            continue
-        fi
-
-        selected="${INDEX_TO_FILE[$pick]}"
-        [[ -n "$selected" ]] && FILE_ACTION_MENU "$selected"
+        case "$pick" in
+            0)
+                MASTERS_menu
+                return
+                ;;
+            00)
+                read -p "Enter new file name: " new_file
+                touch "$SECTION_DIR/$new_file"
+                read -p "Press Enter..." ;;
+            @)
+                M@_update
+                ;;
+            *)
+                selected="${INDEX_TO_FILE[$pick]}"
+                [[ -n "$selected" ]] && FILE_ACTION_MENU "$selected"
+                ;;
+        esac
     done
 }
 
