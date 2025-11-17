@@ -54,7 +54,7 @@ echo
 
 # --- FIGLET Banner ---
 cols=$(tput cols)
-figlet -w "$cols" "MASTERS....." | lolcat
+figlet -w "$cols" "MASTERS...." | lolcat
 
 # --- Load current banner from encrypted config ---
 TMP_FILE=$(mktemp)
