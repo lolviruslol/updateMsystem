@@ -231,28 +231,29 @@ SAVE_RUNMAP() {
 ############################################
 
 MASTERS_menu() {
-    shopt -s expand_aliases
-    clear
-    cols=$(tput cols)
-    figlet -w "$cols" MASTERS.... | lolcat
-    echo -e "\e[1;34mMASTERS menu\e[0m\n"
-    echo "1) M@☆"
-    echo "2) MASTERS Tech"
-    echo "3) WTk"
-    echo "0) Back"
-    echo ""
-    read -p "Enter choice: " choice
+    while true; do
+        shopt -s expand_aliases
+        clear
+        cols=$(tput cols)
+        figlet -w "$cols" MASTERS.... | lolcat
+        echo -e "\e[1;34mMASTERS menu\e[0m\n"
+        echo "1) M@☆"
+        echo "2) MASTERS Tech"
+        echo "3) WTk"
+        echo "4) MASTERS Secure"
+        echo "0) Back"
+        echo ""
+        read -p "Enter choice: " choice
 
-    case $choice in
-        1) SECTION_DIR="$WORK_DIR/M-AT-STAR" ;;
-        2) SECTION_DIR="$WORK_DIR/MASTERS_Tech" ;;
-        3) SECTION_DIR="$WORK_DIR/WTk" ;;
-        0) return ;;
-        *) MASTERS_menu ;;
-    esac
-
-    mkdir -p "$SECTION_DIR"
-    SECTION_menu
+        case $choice in
+            1) SECTION_DIR="$WORK_DIR/M-AT-STAR"; SECTION_menu ;;
+            2) SECTION_DIR="$WORK_DIR/MASTERS_Tech"; SECTION_menu ;;
+            3) SECTION_DIR="$WORK_DIR/WTk"; SECTION_menu ;;
+            4) MASTERS_secure ;;
+            0) break ;;   # <- just exit the menu loop instead of exiting Termux
+            *) continue ;;
+        esac
+    done
 }
 
 ############################################
@@ -434,6 +435,94 @@ MASTERS_update() {
 
 # Alias for convenience
 alias MASTERS-update='MASTERS_update'
+
+
+# ---------------------------------------------------------
+# MASTERS Secure System — ONE-WAY SECURE
+############################################
+# MASTERS SECURE
+############################################
+# MASTERS SECURE — Folder Selection
+############################################
+
+MASTERS_secure() {
+    BASE_DIR="$WORK_DIR"  # /storage/emulated/0/MASTERS
+    while true; do
+        clear
+        echo "──────── MASTERS Secure Center ────────"
+        echo "Select a folder to view files:"
+        echo "0) Back to MASTERS menu"
+        echo "────────────────────────────────────────"
+
+        # List folders
+        i=1
+        declare -A IDX_TO_DIR
+        for d in "$BASE_DIR"/*/; do
+            [[ -d "$d" ]] || continue
+            echo "$i) $(basename "$d")"
+            IDX_TO_DIR[$i]="$d"
+            ((i++))
+        done
+
+        echo "────────────────────────────────────────"
+        read -p "Choose folder: " choice
+
+        if [[ "$choice" == "0" ]]; then
+            return  # back to MASTERS_menu
+        elif [[ -n "${IDX_TO_DIR[$choice]}" ]]; then
+            FOLDER="${IDX_TO_DIR[$choice]}"
+        else
+            continue
+        fi
+
+        # Folder chosen, list files
+        while true; do
+            clear
+            echo "Folder: $FOLDER"
+            echo "──────── Files ─────────"
+            echo "0) Back to folder selection"
+            i=1
+            declare -A IDX_TO_FILE
+            for f in "$FOLDER"*; do
+                [[ -f "$f" ]] || continue
+                echo "$i) $(basename "$f")"
+                IDX_TO_FILE[$i]="$f"
+                ((i++))
+            done
+            echo "──────────────────────"
+            read -p "Select file to secure: " file_choice
+
+            if [[ "$file_choice" == "0" ]]; then
+                break  # back to folder selection
+            elif [[ -n "${IDX_TO_FILE[$file_choice]}" ]]; then
+                FILEPATH="${IDX_TO_FILE[$file_choice]}"
+            else
+                continue
+            fi
+
+            # Secure selected file
+            filename=$(basename "$FILEPATH")
+            ext="${filename##*.}"
+            name="${filename%.*}"
+
+            if [[ "$ext" == "py" ]]; then
+                new_ext="mspy"
+            else
+                new_ext="mstxt"
+            fi
+
+            SECURED_FILE="$FOLDER/$name.$new_ext"
+
+            echo "Encrypting..."
+            if gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase "@MASTERS" -o "$SECURED_FILE" "$FILEPATH"; then
+                echo "✅ Saved as: $SECURED_FILE"
+            else
+                echo "❌ Encryption failed!"
+            fi
+            read -p "Press Enter..."
+        done
+    done
+}
 
 ############################################
 # M@☆ UPDATE — FETCH 3 FILES
