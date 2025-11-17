@@ -151,7 +151,7 @@ MASTERS_menu() {
     shopt -s expand_aliases
     clear
     cols=$(tput cols)
-    figlet -w "$cols" MASTERS..... | lolcat
+    figlet -w "$cols" MASTERS.... | lolcat
     echo -e "\e[1;34mMASTERS menu\e[0m\n"
     echo "1) M@☆"
     echo "2) MASTERS Tech"
