@@ -37,6 +37,81 @@ MATRIX_SCRIPT="$HOME/matrix_tk.sh"
 [ -f "$MATRIX_SCRIPT" ] && bash "$MATRIX_SCRIPT"
 
 ############################################
+# CORE .mspy PROTECTION HELPERS
+############################################
+
+is_mspy() {
+    [[ "$1" == *.mspy ]]
+}
+
+run_mspy() {
+    # Usage: run_mspy "relative/path/to/file.mspy" "optional-section-dir"
+    local file="$1"
+    local alt_section_dir="$2"
+    local dir="${alt_section_dir:-$SECTION_DIR}"
+    local dec="$dir/.tmp_exec.py"
+
+    if [ ! -f "$dir/$file" ]; then
+        echo "File not found: $dir/$file"
+        return 1
+    fi
+
+    echo "..☆.. $file..."
+    if ! gpg --quiet --batch --yes --passphrase "@MASTERS" -o "$dec" "$dir/$file"; then
+        echo "❌ Decrypt failed. Check passphrase or file."
+        [ -f "$dec" ] && shred -u "$dec" 2>/dev/null
+        return 1
+    fi
+
+    echo "Running securely..."
+    (cd "$dir" && python ".tmp_exec.py")
+
+    echo "Cleaning up..."
+    shred -u "$dec" 2>/dev/null || rm -f "$dec"
+    return 0
+}
+
+decrypt_edit_reencrypt() {
+    # Decrypt to temp, open nano, then re-encrypt back to .mspy
+    local file="$1"
+    local dir="$SECTION_DIR"
+    local dec="$dir/.tmp_edit.py"
+    local bak="$dir/.tmp_edit.py.bak"
+    local orig="$dir/$file"
+
+    if [ ! -f "$orig" ]; then
+        echo "File not found: $orig"
+        return 1
+    fi
+
+    echo "Decrypting $file to temp..."
+    if ! gpg --quiet --batch --yes --passphrase "@MASTERS" -o "$dec" "$orig"; then
+        echo "❌ Decrypt failed."
+        [ -f "$dec" ] && shred -u "$dec" 2>/dev/null
+        return 1
+    fi
+
+    # Backup decrypted copy in case user aborts
+    cp "$dec" "$bak" 2>/dev/null || true
+
+    echo "Opening editor. Save and exit to re-encrypt."
+    nano "$dec"
+
+    echo "Re-encrypting and saving..."
+    if gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase "@MASTERS" -o "$orig" "$dec"; then
+        echo "✅ Re-encrypted $file"
+    else
+        echo "❌ Re-encrypt failed. Restoring previous decrypted backup to $dec"
+        cp "$bak" "$dec" 2>/dev/null || true
+    fi
+
+    # Cleanup
+    shred -u "$dec" 2>/dev/null || rm -f "$dec"
+    shred -u "$bak" 2>/dev/null || rm -f "$bak"
+    return 0
+}
+
+############################################
 # CINEMATIC BANNER — DYNAMIC
 ############################################
 
@@ -98,7 +173,7 @@ fi
 # CUSTOM PROMPT
 ############################################
 
-export PS1="\[\e[0;32m\]—\[\e[0;37m\]M\[\e[1;36m\]@\[\e[1;31m\]☆ \[\e[0;32m\]\$ \[\e[0m\]"
+export PS1="\[\e[0;32m\]-\[\e[0;37m\]M\[\e[1;36m\]@\[\e[1;31m\]☆ \[\e[0;32m\]\$ \[\e[0m\]"
 
 ############################################
 # FILE FUNCTION MAP (RUNMAP)
@@ -117,9 +192,7 @@ fi
 # Defaults (only if missing)
 [[ -z "${FILE_FUNCTIONS["WTk/wtk_sniper_system_v2.py"]}" ]] && FILE_FUNCTIONS["WTk/wtk_sniper_system_v2.py"]="WTkMasterFx"
 [[ -z "${FILE_FUNCTIONS["WTk/wtk_masterfx.py"]}" ]] && FILE_FUNCTIONS["WTk/wtk_masterfx.py"]="WTkMasterFx01"
-[[ -z "${FILE_FUNCTIONS["WTk/NumPy.py"]}" ]] && FILE_FUNCTIONS["WTk/NumPy.py"]="NeedNumPy"
 [[ -z "${FILE_FUNCTIONS["lets_vpn_go.png"]}" ]] && FILE_FUNCTIONS["lets_vpn_go.png"]="LetsUpdate_letsVPNgo"
-[[ -z "${FILE_FUNCTIONS["masters1.png"]}" ]] && FILE_FUNCTIONS["masters1.png"]="runmasters1"
 
 ############################################
 # ALIAS ENGINE — CLEAN, SORT & RELOAD
@@ -135,8 +208,18 @@ SAVE_RUNMAP() {
     for key in "${!FILE_FUNCTIONS[@]}"; do
         runname="${FILE_FUNCTIONS[$key]}"
         filepath="$WORK_DIR/$key"
-        # Only add alias if it exists
-        [ "$runname" != "(no function)" ] && echo "alias $runname='python \"$filepath\"'" >> "$ALIAS_FILE"
+
+        # Only add alias if it exists and runname is set
+        if [ -n "$runname" ] && [ -f "$filepath" ]; then
+            filename=$(basename "$filepath")
+            # If it's a protected .mspy file, alias to run_mspy wrapper
+            if is_mspy "$filename"; then
+                echo "alias $runname='run_mspy \"$filename\" \"$WORK_DIR/$(dirname "$key")\"'" >> "$ALIAS_FILE"
+            else
+                # normal python alias
+                echo "alias $runname='python \"$filepath\"'" >> "$ALIAS_FILE"
+            fi
+        fi
     done
 
     sort -o "$ALIAS_FILE" "$ALIAS_FILE"
@@ -352,7 +435,6 @@ MASTERS_update() {
 # Alias for convenience
 alias MASTERS-update='MASTERS_update'
 
-
 ############################################
 # M@☆ UPDATE — FETCH 3 FILES
 ############################################
@@ -417,6 +499,7 @@ SECTION_menu() {
                 sh)   icon="🔧" ;;
                 json|yaml|yml) icon="💾" ;;
                 zip|rar|7z|tar|gz) icon="📦" ;;
+                mspy) icon="🔒" ;;
                 *)
                     if [ -d "$SECTION_DIR/$file_name" ]; then
                         icon="📁"
@@ -426,7 +509,13 @@ SECTION_menu() {
                 ;;
             esac
 
-            echo -e "\e[33m$((i))). $icon  $file_name\e[0m"
+            # show special label if protected
+            if is_mspy "$file_name"; then
+                echo -e "\e[33m$((i))). $icon  $file_name \e[91m[M-SPY]\e[0m"
+            else
+                echo -e "\e[33m$((i))). $icon  $file_name\e[0m"
+            fi
+
             echo -e "      \e[90mrun: $func\e[0m"
             echo
             INDEX_TO_FILE[$i]="$file_name"
@@ -445,7 +534,16 @@ SECTION_menu() {
                 ;;
             00)
                 read -p "Enter new file name: " new_file
-                touch "$SECTION_DIR/$new_file"
+                # If user creates .mspy, create empty encrypted stub
+                if is_mspy "$new_file"; then
+                    tmpstub=$(mktemp)
+                    echo "# Encrypted mspy stub" > "$tmpstub"
+                    gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase "@MASTERS" -o "$SECTION_DIR/$new_file" "$tmpstub"
+                    rm -f "$tmpstub"
+                    echo "Created encrypted stub $new_file"
+                else
+                    touch "$SECTION_DIR/$new_file"
+                fi
                 read -p "Press Enter..." ;;
             @)
                 M@_update
@@ -489,21 +587,8 @@ FILE_ACTION_MENU() {
                 ###################################################
                 # MSPY SYSTEM — decrypt, run, shred
                 ###################################################
-                if [[ "$file" == *.mspy ]]; then
-                    # Decrypt destination path
-                    dec="$SECTION_DIR/.tmp_exec.py"
-
-                    # Decrypt with your master password
-                    gpg --quiet --batch --yes \
-                        --passphrase "@MASTERS" \
-                        -o "$dec" \
-                        "$SECTION_DIR/$file"
-
-                    # Run inside the directory
-                    (cd "$SECTION_DIR" && python ".tmp_exec.py")
-
-                    # Secure wipe
-                    shred -u "$dec" 2>/dev/null
+                if is_mspy "$file"; then
+                    run_mspy "$file"
                     read -p "Press Enter..." dummy
                     continue
                 fi
@@ -545,7 +630,13 @@ FILE_ACTION_MENU() {
                 ;;
 
             3)
-                nano "$SECTION_DIR/$file"
+                if is_mspy "$file"; then
+                    echo "Protected file. Use secure edit workflow."
+                    decrypt_edit_reencrypt "$file"
+                    read -p "Press Enter..." dummy
+                else
+                    nano "$SECTION_DIR/$file"
+                fi
                 ;;
 
             4)
@@ -568,4 +659,7 @@ alias runm='source ~/.bashrc'
 # START
 ############################################
 
-echo -e "\e[90m—M@☆ \$ MASTERS_menu | MASTERS_update\e[0m"
+# ensure aliases reflect current runmap on shell start
+SAVE_RUNMAP 2>/dev/null || true
+
+echo -e "\e[90m-M@☆ \$ MASTERS_menu | MASTERS_update\e[0m"
