@@ -300,7 +300,7 @@ MASTERS_update() {
 
             @)
     echo -e "\n🔥 Updating MASTERS SYSTEM M@☆..."
-    
+
     TMP_UPDATE="$HOME/termux_temp.sh"
     RAW_LINK="https://github.com/lolviruslol/updateMsystem/raw/main/termux_temp.sh"
 
@@ -423,7 +423,8 @@ done < <(ls -1t "$SECTION_DIR")
 }
 
 ############################################
-# FILE ACTION MENU — DYNAMIC
+############################################
+# FILE ACTION MENU — Full MSPY + PY Support
 ############################################
 
 FILE_ACTION_MENU() {
@@ -448,9 +449,57 @@ FILE_ACTION_MENU() {
         case $action in
             1)
                 echo "Executing $file..."
-                python "$SECTION_DIR/$file"
+
+                ###################################################
+                # MSPY SYSTEM — decrypt, run, shred
+                ###################################################
+                if [[ "$file" == *.mspy ]]; then
+                    # Decrypt destination path
+                    dec="$SECTION_DIR/.tmp_exec.py"
+
+                    # Decrypt with your master password
+                    gpg --quiet --batch --yes \
+                        --passphrase "@MASTERS" \
+                        -o "$dec" \
+                        "$SECTION_DIR/$file"
+
+                    # Run inside the directory
+                    (cd "$SECTION_DIR" && python ".tmp_exec.py")
+
+                    # Secure wipe
+                    shred -u "$dec" 2>/dev/null
+                    read -p "Press Enter..." dummy
+                    continue
+                fi
+
+                ###################################################
+                # Normal Python script
+                ###################################################
+                if [[ "$file" == *.py ]]; then
+                    (cd "$SECTION_DIR" && python "$file")
+                    read -p "Press Enter..." dummy
+                    continue
+                fi
+
+                ###################################################
+                # Shell scripts
+                ###################################################
+                if [[ "$file" == *.sh ]]; then
+                    (cd "$SECTION_DIR" && bash "$file")
+                    read -p "Press Enter..." dummy
+                    continue
+                fi
+
+                ###################################################
+                # Fallback — try python then shell
+                ###################################################
+                (
+                    cd "$SECTION_DIR" &&
+                    python "$file" 2>/dev/null || bash "$file"
+                )
                 read -p "Press Enter..." dummy
                 ;;
+
             2)
                 echo "Current shortcut: $func"
                 read -p "Enter new shortcut: " new_func
@@ -458,15 +507,18 @@ FILE_ACTION_MENU() {
                 SAVE_RUNMAP
                 read -p "Updated. Press Enter..." dummy
                 ;;
+
             3)
                 nano "$SECTION_DIR/$file"
                 ;;
+
             4)
                 echo "Deleting shortcut: $func"
                 unset FILE_FUNCTIONS[$key]
                 SAVE_RUNMAP
                 read -p "Removed. Press Enter..." dummy
                 ;;
+
             0)
                 return
                 ;;
