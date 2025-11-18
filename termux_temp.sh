@@ -1,4 +1,4 @@
-###############################
+##############################
 #  MASTERS SYSTEM M@☆
 ###############################
 #!/data/data/com.termux/files/usr/bin/bash
@@ -127,8 +127,9 @@ for (( i=0; i<${#text}; i++ )); do
 done
 echo
 
-# --- FIGLET Banner (fixed width) ---
-figlet -w 100 "MASTERS...." | lolcat
+# --- FIGLET Banner ---
+cols=$(tput cols)
+figlet -w "$cols" "MASTERS...." | lolcat
 
 # --- Load current banner from encrypted config ---
 TMP_FILE=$(mktemp)
@@ -139,16 +140,15 @@ else
 fi
 rm -f "$TMP_FILE"
 
+# Fallback default banner if empty
 [ -z "$BANNER_LINE" ] && BANNER_LINE="ᴛᵏ ᴍᵃˢᵗᵉʳ @M🇦 🇸 🇹 🇪 🇷 🇸 🇹 🇪 🇨 🇭 🇸 🇴 🇱 🇺 🇹 🇮 🇴 🇳 🇸...——"
 
-# --- Clean and lock alignment ---
-clean_line=$(echo "$BANNER_LINE" | sed 's/[[:cntrl:]]//g')
-
-printf "\e[1;32m%s\n" "M@☆......."
-printf "%s\n" "....................................................💙"
-printf "%s\n" ".........."
-printf "%s\n" "$clean_line"
-printf "\e[0m"
+# --- Left-aligned cinematic lines ---
+echo -e "\e[1;32mM@☆......."
+echo "....................................................💙"
+echo ".........."
+echo "$BANNER_LINE"
+echo -e "\e[0m"
 
 ############################################
 # WORK DIR
