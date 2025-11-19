@@ -45,29 +45,36 @@ is_mspy() {
 }
 
 run_mspy() {
-    # Usage: run_mspy "relative/path/to/file.mspy" "optional-section-dir"
+    # Usage: run_mspy "file.mspy" "optional-section-dir"
     local file="$1"
     local alt_section_dir="$2"
     local dir="${alt_section_dir:-$SECTION_DIR}"
-    local dec="$dir/.tmp_exec.py"
 
+    # Ensure file exists
     if [ ! -f "$dir/$file" ]; then
         echo "File not found: $dir/$file"
         return 1
     fi
 
     echo "..☆.. $file..."
-    if ! gpg --quiet --batch --yes --passphrase "@MASTERS" -o "$dec" "$dir/$file"; then
+
+    # Create temp file in Termux storage
+    TMP_FILE="$HOME/.termux_mspy_tmp.py"
+
+    # Decrypt into temp file
+    if ! gpg --quiet --batch --yes --passphrase "@MASTERS" -o "$TMP_FILE" "$dir/$file"; then
         echo "❌ Decrypt failed. Check passphrase or file."
-        [ -f "$dec" ] && shred -u "$dec" 2>/dev/null
+        [ -f "$TMP_FILE" ] && rm -f "$TMP_FILE"
         return 1
     fi
 
-    echo "Running securely..."
-    (cd "$dir" && python ".tmp_exec.py")
+    echo "Running $file..."
+    (cd "$dir" && python "$TMP_FILE")
 
-    echo "Cleaning up..."
-    shred -u "$dec" 2>/dev/null || rm -f "$dec"
+    echo "M@☆..."
+    [ -f "$TMP_FILE" ] && rm -f "$TMP_FILE"
+
+    echo "✅."
     return 0
 }
 
