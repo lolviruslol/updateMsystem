@@ -564,86 +564,111 @@ M@_update() {
     read -p "Press Enter to continue..." dummy
 }
 
-############################################################################
-# SECTION MENU — DYNAMIC SCALE
+##########################################################
+############################################
+# SECTION MENU — WITH TYPE FILTER (FIXED)
 ############################################
 
 SECTION_menu() {
     while true; do
         clear
-        cols=$(tput cols)
         echo -e "\e[1;32mDirectory: $(basename "$SECTION_DIR")\e[0m"
-        echo "─"$(printf '─%.0s' $(seq 1 $((cols-1))))"─"
+        echo "────────────────────────────────────────"
+
+        echo "Select file type to view:"
+        echo "1) Scripts"
+        echo "2) Documents"
+        echo "3) Others"
+        echo "4) All"
+        echo "0) Back"
+        read -p "Choice: " type_choice
+
+        case "$type_choice" in
+            0) return ;;
+            1) VIEW_MODE="SCRIPTS" ;;
+            2) VIEW_MODE="DOCS" ;;
+            3) VIEW_MODE="OTHERS" ;;
+            4) VIEW_MODE="ALL" ;;
+            *) continue ;;
+        esac
 
         i=1
         declare -A INDEX_TO_FILE
 
-        # LIST FILES SORTED BY DATE (NEWEST FIRST) WITH ICONS
         while IFS= read -r file_name; do
+            ext="${file_name##*.}"
+
+            # ---------------- FILTER LOGIC ----------------
+            case "$VIEW_MODE" in
+                SCRIPTS)
+                    [[ "$ext" =~ ^(py|sh|mspy)$ ]] || continue
+                    ;;
+                DOCS)
+                    [[ "$ext" =~ ^(txt|pdf|json|yaml|yml|doc|docx|xls|xlsx|ppt|pptx)$ ]] || continue
+                    ;;
+                OTHERS)
+                    # Exclude Scripts + Documents
+                    [[ "$ext" =~ ^(py|sh|mspy|txt|pdf|json|yaml|yml|doc|docx|xls|xlsx|ppt|pptx)$ ]] && continue
+                    ;;
+                ALL)
+                    : # no filter
+                    ;;
+            esac
+            # ------------------------------------------------
+
             key="$(basename "$SECTION_DIR")/$file_name"
             func="${FILE_FUNCTIONS[$key]:-(no function)}"
 
-            # Detect file extension
-            ext="${file_name##*.}"
-            icon="📦"  # default
-
+            # ICON DETECTION
+            icon="⚙️"
             case "$ext" in
-                py)   icon="🐍" ;;
-                txt)  icon="📄" ;;
-                pdf)  icon="📜" ;;
-                png|jpg|jpeg|gif|webp) icon="🖼️" ;;
-                sh)   icon="🔧" ;;
-                json|yaml|yml) icon="💾" ;;
-                zip|rar|7z|tar|gz) icon="📦" ;;
+                py) icon="🐍" ;;
+                sh) icon="🔧" ;;
                 mspy) icon="🔒" ;;
-                *)
-                    if [ -d "$SECTION_DIR/$file_name" ]; then
-                        icon="📁"
-                    else
-                        icon="⚙️"
-                    fi
-                ;;
+                txt|doc|docx) icon="📄" ;;
+                pdf) icon="📜" ;;
+                json|yaml|yml) icon="💾" ;;
+                xls|xlsx) icon="📊" ;;
+                ppt|pptx) icon="📽️" ;;
+                png|jpg|jpeg|gif|webp) icon="🖼️" ;;
+                zip|rar|7z|tar|gz) icon="📦" ;;
             esac
+            [ -d "$SECTION_DIR/$file_name" ] && icon="📁"
 
-            # show special label if protected
+            # DISPLAY
             if is_mspy "$file_name"; then
                 echo -e "\e[33m$((i))). $icon  $file_name \e[91m[M-SPY]\e[0m"
             else
                 echo -e "\e[33m$((i))). $icon  $file_name\e[0m"
             fi
 
-            echo -e "      \e[90mrun: $func\e[0m"
-            echo
+            echo -e "      \e[90mrun: $func\e[0m\n"
+
             INDEX_TO_FILE[$i]="$file_name"
             ((i++))
         done < <(ls -1t "$SECTION_DIR")
 
-        echo "─"$(printf '─%.0s' $(seq 1 $((cols-1))))"─"
+        echo "────────────────────────────────────────"
         echo "0) Go Back | 00) Add New File | @) M@☆update"
-        echo "─"$(printf '─%.0s' $(seq 1 $((cols-1))))"─"
         read -p "Enter choice: " pick
 
         case "$pick" in
-            0)
-                MASTERS_menu
-                return
-                ;;
+            0) MASTERS_menu; return ;;
             00)
                 read -p "Enter new file name: " new_file
-                # If user creates .mspy, create empty encrypted stub
                 if is_mspy "$new_file"; then
                     tmpstub=$(mktemp)
                     echo "# Encrypted mspy stub" > "$tmpstub"
-                    gpg --symmetric --cipher-algo AES256 --batch --yes --passphrase "@MASTERS" -o "$SECTION_DIR/$new_file" "$tmpstub"
+                    gpg --symmetric --cipher-algo AES256 --batch --yes \
+                        --passphrase "@MASTERS" \
+                        -o "$SECTION_DIR/$new_file" "$tmpstub"
                     rm -f "$tmpstub"
                     echo "Created encrypted stub $new_file"
                 else
                     touch "$SECTION_DIR/$new_file"
                 fi
                 read -p "Press Enter..." ;;
-            @)
-                M@_update
-                ;;
+            @) M@_update ;;
             *)
                 selected="${INDEX_TO_FILE[$pick]}"
                 [[ -n "$selected" ]] && FILE_ACTION_MENU "$selected"
